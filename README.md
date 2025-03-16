@@ -1,7 +1,9 @@
 # TCGplayerTools
 
 **TCGplayer Shipping Address Parser**
+
 **Purpose**
+
 This tool simplifies the process of handling shipping addresses from TCGplayer's CSV export files. If you're a TCGplayer seller who frequently ships items, this address parser helps you quickly extract and format customer shipping information for easy copying and pasting.
 
 The TCGplayer Shipping Address Parser is designed to:
@@ -27,7 +29,9 @@ Simply drag and drop your TCGplayer_ShippingExport CSV file onto the upload area
 -------------------
 
 **TCGplayer Pull Sheet Combiner**
+
 **Purpose**
+
 This tool allows you to combine multiple TCGplayer CSV pull sheets into a single, organized, printable reference sheet. It simplifies the process of managing inventory across multiple orders by consolidating all your cards into one convenient list.
 Features
 
