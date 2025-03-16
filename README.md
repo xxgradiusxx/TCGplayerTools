@@ -28,12 +28,11 @@ Simply drag and drop your TCGplayer_ShippingExport CSV file onto the upload area
 
 -------------------
 
-**TCGplayer Pull Sheet Combiner**
+**TCGplayer Better Pullsheet**
 
 **Purpose**
 
-This tool allows you to combine multiple TCGplayer CSV pull sheets into a single, organized, printable reference sheet. It simplifies the process of managing inventory across multiple orders by consolidating all your cards into one convenient list.
-Features
+This tool cleans up pullsheets provided by the TCGplayer pullsheet export. It only displayes the Game, Card Name, Set, Card Number, Quantity. It displays it in a clean, easy to read format that is ready to print.
 
 **The TCGplayer Pull Sheet Combiner is designed to:**
 
@@ -48,9 +47,6 @@ Features
 
 - Download the HTML file to your computer
 - Open the file in any modern web browser
-- Upload your TCGplayer CSV files (export these from your TCGplayer account)
-- Click "Combine Pull Sheets" to generate your consolidated list
+- Upload your TCGplayer CSV file (export this from your TCGplayer account)
 - Click "Print Pull Sheet" to print or save as PDF
-
-This tool is especially useful for game stores, collectors, and sellers who manage multiple TCG orders and need an efficient way to organize their inventory for pulling cards from storage.
 
