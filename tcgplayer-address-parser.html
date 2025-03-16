@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TCGplayer Shipping Address Parser</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #444;
+            margin-bottom: 20px;
+        }
+        .upload-section {
+            margin-bottom: 20px;
+            padding: 20px;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            text-align: center;
+            transition: background-color 0.3s;
+        }
+        .upload-section.dragover {
+            background-color: #e8f4fd;
+            border-color: #3b82f6;
+        }
+        .addresses {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .address-card {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 15px;
+            position: relative;
+        }
+        .address-text {
+            white-space: pre-line;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        .copy-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        .copy-btn:hover {
+            background-color: #45a049;
+        }
+        .order-info {
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+        .controls {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .format-option {
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .format-option.active {
+            background-color: #e0e7ff;
+            border-color: #3b82f6;
+        }
+        .batch-copy {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e8f4fd;
+            border-radius: 6px;
+        }
+        #batchOutput {
+            width: 100%;
+            height: 200px;
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>TCGplayer Shipping Address Parser</h1>
+        
+        <div class="upload-section" id="uploadSection">
+            <p>Upload your TCGplayer_ShippingExport CSV file</p>
+            <p><strong>Drag & drop</strong> your CSV file here or <strong>click</strong> to browse</p>
+            <input type="file" id="csvFile" accept=".csv">
+        </div>
+        
+        <div id="resultsSection" style="display: none;">
+            <div class="controls">
+                <h3>Address Format:</h3>
+                <div class="format-option active" data-format="standard">Standard</div>
+                <div class="format-option" data-format="compact">Compact</div>
+                <div class="format-option" data-format="shipping-label">Shipping Label</div>
+            </div>
+            
+            <div class="batch-copy">
+                <h3>Batch Copy All Addresses</h3>
+                <button id="batchCopyBtn" class="copy-btn">Copy All Addresses</button>
+                <textarea id="batchOutput" readonly></textarea>
+            </div>
+            
+            <h2>Individual Addresses</h2>
+            <div class="addresses" id="addressContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const csvFileInput = document.getElementById('csvFile');
+            const uploadSection = document.getElementById('uploadSection');
+            const resultsSection = document.getElementById('resultsSection');
+            const addressContainer = document.getElementById('addressContainer');
+            const batchOutput = document.getElementById('batchOutput');
+            const batchCopyBtn = document.getElementById('batchCopyBtn');
+            const formatOptions = document.querySelectorAll('.format-option');
+            
+            let currentFormat = 'standard';
+            let parsedAddresses = [];
+            
+            // File input change handler
+            csvFileInput.addEventListener('change', handleFileSelect);
+            
+            // Setup drag and drop functionality
+            uploadSection.addEventListener('click', () => {
+                csvFileInput.click();
+            });
+            
+            // Prevent default drag behaviors
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                uploadSection.addEventListener(eventName, preventDefaults, false);
+                document.body.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            // Highlight drop area when item is dragged over it
+            ['dragenter', 'dragover'].forEach(eventName => {
+                uploadSection.addEventListener(eventName, highlight, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                uploadSection.addEventListener(eventName, unhighlight, false);
+            });
+            
+            // Handle dropped files
+            uploadSection.addEventListener('drop', handleDrop, false);
+            
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            function highlight() {
+                uploadSection.classList.add('dragover');
+            }
+            
+            function unhighlight() {
+                uploadSection.classList.remove('dragover');
+            }
+            
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                
+                if (files.length && files[0].type === 'text/csv' || files[0].name.endsWith('.csv')) {
+                    handleFiles(files);
+                } else {
+                    alert('Please drop a valid CSV file');
+                }
+            }
+            
+            function handleFiles(files) {
+                if (files.length) {
+                    handleFile(files[0]);
+                }
+            }
+            
+            function handleFile(file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const csvData = e.target.result;
+                    parseCSV(csvData);
+                };
+                reader.readAsText(file);
+            }
+            
+            formatOptions.forEach(option => {
+                option.addEventListener('click', () => {
+                    formatOptions.forEach(opt => opt.classList.remove('active'));
+                    option.classList.add('active');
+                    currentFormat = option.dataset.format;
+                    renderAddresses();
+                });
+            });
+            
+            batchCopyBtn.addEventListener('click', () => {
+                batchOutput.select();
+                document.execCommand('copy');
+                batchCopyBtn.textContent = 'Copied!';
+                setTimeout(() => {
+                    batchCopyBtn.textContent = 'Copy All Addresses';
+                }, 2000);
+            });
+            
+            function handleFileSelect(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                handleFile(file);
+            }
+            
+            function parseCSV(csvData) {
+                // Use simple string parsing since we don't have PapaParse in a browser context
+                const lines = csvData.split('\n');
+                const headers = lines[0].split(',').map(header => header.trim().replace(/^"|"$/g, ''));
+                
+                // Find the indices of relevant columns
+                const colIndices = {
+                    orderNum: headers.indexOf('Order #'),
+                    firstName: headers.indexOf('FirstName'),
+                    lastName: headers.indexOf('LastName'),
+                    address1: headers.indexOf('Address1'),
+                    address2: headers.indexOf('Address2'),
+                    city: headers.indexOf('City'),
+                    state: headers.indexOf('State'),
+                    postalCode: headers.indexOf('PostalCode'),
+                    country: headers.indexOf('Country'),
+                    orderDate: headers.indexOf('Order Date'),
+                    itemCount: headers.indexOf('Item Count'),
+                    orderValue: headers.indexOf('Value Of Products')
+                };
+                
+                // Parse each row and extract address information
+                parsedAddresses = [];
+                
+                for (let i = 1; i < lines.length; i++) {
+                    if (!lines[i].trim()) continue;
+                    
+                    // Handle quoted fields correctly
+                    const fields = [];
+                    let fieldValue = '';
+                    let inQuotes = false;
+                    
+                    for (let j = 0; j < lines[i].length; j++) {
+                        const char = lines[i][j];
+                        if (char === '"') {
+                            inQuotes = !inQuotes;
+                        } else if (char === ',' && !inQuotes) {
+                            fields.push(fieldValue);
+                            fieldValue = '';
+                        } else {
+                            fieldValue += char;
+                        }
+                    }
+                    fields.push(fieldValue); // Add the last field
+                    
+                    // Extract address data
+                    const address = {
+                        orderNum: fields[colIndices.orderNum].replace(/^"|"$/g, ''),
+                        firstName: fields[colIndices.firstName].replace(/^"|"$/g, ''),
+                        lastName: fields[colIndices.lastName].replace(/^"|"$/g, ''),
+                        address1: fields[colIndices.address1].replace(/^"|"$/g, ''),
+                        address2: fields[colIndices.address2].replace(/^"|"$/g, ''),
+                        city: fields[colIndices.city].replace(/^"|"$/g, ''),
+                        state: fields[colIndices.state].replace(/^"|"$/g, ''),
+                        postalCode: fields[colIndices.postalCode].replace(/^"|"$/g, ''),
+                        country: fields[colIndices.country].replace(/^"|"$/g, ''),
+                        orderDate: fields[colIndices.orderDate].replace(/^"|"$/g, ''),
+                        itemCount: fields[colIndices.itemCount].replace(/^"|"$/g, ''),
+                        orderValue: fields[colIndices.orderValue].replace(/^"|"$/g, '')
+                    };
+                    
+                    parsedAddresses.push(address);
+                }
+                
+                renderAddresses();
+                uploadSection.style.display = 'none';
+                resultsSection.style.display = 'block';
+            }
+            
+            function formatAddress(address, format) {
+                const fullName = `${address.firstName} ${address.lastName}`;
+                
+                switch (format) {
+                    case 'compact':
+                        return `${fullName}\n${address.address1}${address.address2 ? ', ' + address.address2 : ''}\n${address.city}, ${address.state} ${address.postalCode}${address.country !== 'US' ? ', ' + address.country : ''}`;
+                    
+                    case 'shipping-label':
+                        return `${fullName.toUpperCase()}\n${address.address1.toUpperCase()}${address.address2 ? '\n' + address.address2.toUpperCase() : ''}\n${address.city.toUpperCase()}, ${address.state.toUpperCase()} ${address.postalCode}${address.country !== 'US' ? '\n' + address.country.toUpperCase() : ''}`;
+                    
+                    case 'standard':
+                    default:
+                        return `${fullName}\n${address.address1}${address.address2 ? '\n' + address.address2 : ''}\n${address.city}, ${address.state} ${address.postalCode}${address.country !== 'US' ? '\n' + address.country : ''}`;
+                }
+            }
+            
+            function renderAddresses() {
+                // Clear previous results
+                addressContainer.innerHTML = '';
+                
+                // Create batch output
+                let batchContent = '';
+                
+                // Render each address
+                parsedAddresses.forEach((address, index) => {
+                    const formattedAddress = formatAddress(address, currentFormat);
+                    batchContent += formattedAddress + '\n\n';
+                    
+                    const addressCard = document.createElement('div');
+                    addressCard.className = 'address-card';
+                    
+                    const addressText = document.createElement('div');
+                    addressText.className = 'address-text';
+                    addressText.textContent = formattedAddress;
+                    
+                    const copyBtn = document.createElement('button');
+                    copyBtn.className = 'copy-btn';
+                    copyBtn.textContent = 'Copy Address';
+                    copyBtn.onclick = () => {
+                        navigator.clipboard.writeText(formattedAddress)
+                            .then(() => {
+                                copyBtn.textContent = 'Copied!';
+                                setTimeout(() => {
+                                    copyBtn.textContent = 'Copy Address';
+                                }, 2000);
+                            })
+                            .catch(err => {
+                                console.error('Could not copy text: ', err);
+                            });
+                    };
+                    
+                    const orderInfo = document.createElement('div');
+                    orderInfo.className = 'order-info';
+                    orderInfo.innerHTML = `Order #: ${address.orderNum}<br>Date: ${address.orderDate}<br>Items: ${address.itemCount}<br>Value: $${parseFloat(address.orderValue).toFixed(2)}`;
+                    
+                    addressCard.appendChild(addressText);
+                    addressCard.appendChild(copyBtn);
+                    addressCard.appendChild(orderInfo);
+                    
+                    addressContainer.appendChild(addressCard);
+                });
+                
+                batchOutput.value = batchContent.trim();
+            }
+            
+            // Load CSV if provided through the URL or pre-loaded data
+            // If you have pre-loaded data, you can initialize it here
+            const preloadedData = `Order #,FirstName,LastName,Address1,Address2,City,State,PostalCode,Country,Order Date,Product Weight,Shipping Method,Item Count,Value Of Products,Shipping Fee Paid,Tracking #,Carrier
+68A7DE27-FB15DE-CAFDC,russell,mehlman,57150 MEHLMAN RD,,BELLAIRE,OH,43906-9571,US,2025-03-15,0.07,Standard (7-10 days),1,0.82,1.31,,
+68A7DE27-0B3BA7-F4A22,Chris,Eccles,323 S SANDY BROOK WAY,,SIMPSONVILLE,SC,29680-6267,US,2025-03-15,0.07,Standard (7-10 days),1,0.71,1.31,,
+68A7DE27-47DE49-09F11,James,Dingess,112 Twigg Court,,Stephens City,VA,22655,US,2025-03-15,0.28,Standard (7-10 days),4,6.13,1.31,,`;
+            
+            // Uncomment to automatically parse preloaded data on page load
+            // parseCSV(preloadedData);
+        });
+    </script>
+</body>
+</html>
