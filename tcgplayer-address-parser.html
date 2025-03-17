@@ -47,6 +47,35 @@
             padding: 15px;
             position: relative;
         }
+        .address-card.needs-extra-postage {
+            background-color: #fff3cd;
+            border-color: #ffeeba;
+        }
+        .address-card.needs-tracking {
+            background-color: #d1ecf1;
+            border-color: #bee5eb;
+        }
+        .address-card.needs-both {
+            background: linear-gradient(135deg, #fff3cd 50%, #d1ecf1 50%);
+            border-color: #e0dbb7;
+        }
+        .card-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 12px;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        .postage-indicator {
+            background-color: #ffc107;
+            color: #856404;
+        }
+        .tracking-indicator {
+            background-color: #17a2b8;
+            color: #0c5460;
+        }
         .address-text {
             white-space: pre-line;
             margin-bottom: 10px;
@@ -71,6 +100,13 @@
             margin-top: 10px;
             border-top: 1px solid #eee;
             padding-top: 10px;
+        }
+        .order-info a {
+            color: #3b82f6;
+            text-decoration: none;
+        }
+        .order-info a:hover {
+            text-decoration: underline;
         }
         .controls {
             margin: 20px 0;
@@ -337,6 +373,37 @@
                     const addressCard = document.createElement('div');
                     addressCard.className = 'address-card';
                     
+                    // Check if the order needs extra postage (items > 7)
+                    const needsExtraPostage = parseInt(address.itemCount) > 7;
+                    
+                    // Check if the order needs tracking (value > $25)
+                    const needsTracking = parseFloat(address.orderValue) > 25;
+                    
+                    // Apply appropriate classes
+                    if (needsExtraPostage && needsTracking) {
+                        addressCard.classList.add('needs-both');
+                    } else if (needsExtraPostage) {
+                        addressCard.classList.add('needs-extra-postage');
+                    } else if (needsTracking) {
+                        addressCard.classList.add('needs-tracking');
+                    }
+                    
+                    // Add indicators
+                    if (needsExtraPostage) {
+                        const postageIndicator = document.createElement('div');
+                        postageIndicator.className = 'card-indicator postage-indicator';
+                        postageIndicator.textContent = 'Extra Postage';
+                        addressCard.appendChild(postageIndicator);
+                    }
+                    
+                    if (needsTracking) {
+                        const trackingIndicator = document.createElement('div');
+                        trackingIndicator.className = 'card-indicator tracking-indicator';
+                        trackingIndicator.style.top = needsExtraPostage ? '40px' : '10px';
+                        trackingIndicator.textContent = 'Tracking Required';
+                        addressCard.appendChild(trackingIndicator);
+                    }
+                    
                     const addressText = document.createElement('div');
                     addressText.className = 'address-text';
                     addressText.textContent = formattedAddress;
@@ -359,7 +426,7 @@
                     
                     const orderInfo = document.createElement('div');
                     orderInfo.className = 'order-info';
-                    orderInfo.innerHTML = `Order #: ${address.orderNum}<br>Date: ${address.orderDate}<br>Items: ${address.itemCount}<br>Value: $${parseFloat(address.orderValue).toFixed(2)}`;
+                    orderInfo.innerHTML = `Order #: <a href="https://sellerportal.tcgplayer.com/orders/${address.orderNum}" target="_blank">${address.orderNum}</a><br>Date: ${address.orderDate}<br>Items: ${address.itemCount}<br>Value: ${parseFloat(address.orderValue).toFixed(2)}`;
                     
                     addressCard.appendChild(addressText);
                     addressCard.appendChild(copyBtn);
