@@ -128,9 +128,33 @@
         .print-btn:hover {
             background-color: #0b7dda;
         }
-        .print-btn:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
+        /* Add styles for variant indicators */
+        .foil-card {
+            font-weight: bold;
+        }
+        .hyperspace-card {
+            position: relative;
+        }
+        .hyperspace-indicator {
+            display: inline-block;
+            margin-right: 6px;
+            vertical-align: middle;
+            color: #FFD700;
+            font-size: 16px;
+        }
+        .quantity-indicator {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 18px;
+            height: 18px;
+            margin-right: 6px;
+            font-size: 11px;
+            font-weight: bold;
+            color: white;
+            background-color: #e74c3c;
+            border-radius: 50%;
+            padding: 0 2px;
         }
         @media print {
             body {
@@ -173,6 +197,17 @@
             @page {
                 margin: 0.5cm;
                 size: auto;
+            }
+            /* Ensure variant indicators print properly */
+            .hyperspace-indicator {
+                color: #000 !important;
+                font-weight: bold;
+                text-shadow: none;
+            }
+            .quantity-indicator {
+                border: 1px solid #c0392b;
+                background-color: #e74c3c !important;
+                color: white !important;
             }
         }
     </style>
@@ -366,13 +401,45 @@
                     gameGroups[game] = [];
                 }
                 
-                // Only add if it has all required fields
+                // Check if we have valid required fields
                 if (item['Product Name'] && (item['Number'] !== undefined && item['Number'] !== null)) {
+                    // Extract potential variant information
+                    let variantInfo = '';
+                    
+                    // Check if Condition contains variant info (beyond Near Mint, Lightly Played, etc.)
+                    const basicConditions = ['Near Mint', 'Lightly Played', 'Moderately Played', 'Heavily Played', 'Damaged'];
+                    if (item['Condition'] && !basicConditions.includes(item['Condition'])) {
+                        // If condition contains more than just basic condition, it might have variant info
+                        variantInfo = item['Condition'];
+                    }
+                    
+        // Check if Product Name contains variant info in parentheses, extract it
+                    const nameMatch = item['Product Name'].match(/^(.*?)(\s*\([^)]*\)\s*)$/);
+                    let name = item['Product Name'];
+                    if (nameMatch) {
+                        // If name has parentheses, check if it's variant info
+                        const possibleVariant = nameMatch[2].trim();
+                        if (possibleVariant.includes('Foil') || 
+                            possibleVariant.includes('Borderless') || 
+                            possibleVariant.includes('Extended') ||
+                            possibleVariant.includes('Showcase') ||
+                            possibleVariant.includes('Alt Art') ||
+                            possibleVariant.includes('Hyperspace')) {
+                            name = nameMatch[1].trim();
+                            // Add to variant info if not already included
+                            if (!variantInfo.includes(possibleVariant)) {
+                                variantInfo = variantInfo ? `${variantInfo}, ${possibleVariant}` : possibleVariant;
+                            }
+                        }
+                    }
+                    
                     gameGroups[game].push({
-                        name: item['Product Name'],
+                        name: name,
                         number: item['Number'],
                         set: item['Set'] || 'N/A',
-                        quantity: item['Quantity'] || 1
+                        quantity: item['Quantity'] || 1,
+                        variant: variantInfo,
+                        rarity: item['Rarity'] || ''
                     });
                     totalItems++;
                 }
@@ -411,9 +478,37 @@
                 });
                 
                 items.forEach(item => {
+                    // Format the card name with number and any variant info
+                    let displayName = `${item.name} (${item.number})`;
+                    let cardClass = '';
+                    let indicators = '';
+                    
+                    // Add quantity indicator for quantities greater than 1
+                    if (item.quantity > 1) {
+                        indicators += `<span class="quantity-indicator" title="${item.quantity} needed">${item.quantity}</span>`;
+                    }
+                    
+                    if (item.variant) {
+                        displayName += ` [${item.variant}]`;
+                        
+                        // Check variant types and apply appropriate styling
+                        const variantLower = item.variant.toLowerCase();
+                        
+                        // Make Foil cards bold
+                        if (variantLower.includes('foil')) {
+                            cardClass = 'foil-card';
+                        }
+                        
+                        // Add Hyperspace indicator (without making bold)
+                        if (variantLower.includes('hyperspace')) {
+                            cardClass += ' hyperspace-card';
+                            indicators += `<span class="hyperspace-indicator" title="Hyperspace Card">★</span>`;
+                        }
+                    }
+                    
                     contentHTML += `
                         <tr>
-                            <td>${item.name} (${item.number})</td>
+                            <td class="${cardClass}">${indicators}${displayName}</td>
                             <td>${item.set}</td>
                             <td>${item.quantity}</td>
                         </tr>
